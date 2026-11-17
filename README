@@ -1,46 +1,76 @@
-PAC-MAN - C++ COLLEGE PROJECT
+PAC-MAN V3 - C++ OFFLINE CONSOLE GAME
+=====================================
 
-Enrollment_no: 02, 03
-Names: Darshil Kareliya, Mayank Dama
-============================
+PROJECT RULES
+-------------
+- C++ only (C++11 or later).
+- Designed for Windows with MinGW/GCC.
+- Runs offline. No API keys, internet, cloud services or online assets.
+- Exactly 8 project files are included in this ZIP.
+- Includes original synthesized arcade-style gameplay sounds, played asynchronously without blocking movement or triggering Windows error beeps.
+- Emoji graphics require a UTF-8 capable terminal and a font with emoji support.
+- scores.txt is created automatically in the game folder when a game ends.
 
-FILES
------
-game.cpp     Main function and game loop (Mayank Dama)
-player.cpp   Player input and movement (Mayank Dama)
-ghost.cpp    Automatic ghost movement (Darshil Kareliya)
-maze.cpp     Maze creation, display and wall detection (Darshil Kareliya)
-menu.cpp     Main menu, instructions and player name (Darshil Kareliya)
-records.cpp  Score saving and leaderboard (Mayank Dama)
-game.h       Shared declarations used by all modules (Darshil Kareliya)
+FILES (EXACTLY 8)
+-----------------
+game.cpp    Main game loop, lives, levels, countdown, pause, collisions and victory.
+game.h      Shared enums, structures and function declarations.
+player.cpp  Keyboard input, movement, coin/power pellet collection.
+ghost.cpp   Ghost movement, chase/scatter/frightened behaviour and personalities.
+maze.cpp    Maze layouts, emoji rendering, walls, coins and power pellets.
+menu.cpp    Main menu, instructions, difficulty and sound settings.
+records.cpp Top 10 leaderboard and local player statistics.
+README     Project documentation and build instructions.
 
-REQUIREMENTS
-------------
-- Windows
-- GCC / MinGW
-- C++11 or later
+FEATURES
+--------
+1. Three lives per game.
+2. Power pellets and temporary frightened ghost behaviour.
+3. Three progressive levels.
+4. Bonus fruit and bonus points.
+5. Easy, Medium and Hard difficulty.
+6. Chase, scatter and frightened ghost modes.
+7. Three ghost movement personalities.
+8. Wall-aware ghost movement.
+9. Pause and resume with P.
+10. Three-second start countdown.
+11. Game-over and victory screens.
+12. HUD for score, lives, level, coins, difficulty, sound and power.
+13. Emoji graphics for player, ghosts, walls, coins, power and fruit.
+14. Top 10 local leaderboard.
+15. Local player statistics.
+16. Persistent scores in scores.txt.
+17. High score ranking through leaderboard sorting.
+18. Original synthesized arcade sound effects for coin collection, power pellets, ghost collisions, fruit and game results.
+19. Sound ON/OFF option.
+20. New all-time high-score notification.
+21. No internet or API keys required.
 
-COMPILE
--------
-g++ game.cpp player.cpp ghost.cpp maze.cpp menu.cpp records.cpp -o PacMan.exe -std=c++11
+CONTROLS
+--------
+W / Up Arrow       Move up
+A / Left Arrow     Move left
+S / Down Arrow     Move down
+D / Right Arrow    Move right
+P                  Pause / resume
+Q                  Quit current game
+
+BUILD (WINDOWS / MINGW)
+-----------------------
+Open CMD in the folder containing the 6 .cpp files and game.h, then run:
+
+g++ game.cpp player.cpp ghost.cpp maze.cpp menu.cpp records.cpp -o PacMan.exe -std=c++11 -lwinmm
 
 RUN
 ---
 PacMan.exe
 
-CONTROLS
---------
-W / Up Arrow     Move up
-A / Left Arrow   Move left
-S / Down Arrow   Move down
-D / Right Arrow  Move right
-Q                Quit current game
-
 NOTES
 -----
-The game uses Windows console functions and is intended for Windows.
-Scores are stored in scores.txt in the folder from which the game runs.
-
-This is a starter MVP implementation. Compile and test the integrated
-project before submitting. The maze layout and all ghost/player spawn
-positions should be checked during testing.
+- Sound is generated locally as short PCM WAV tones and played asynchronously with Windows PlaySound; compile with -lwinmm.
+- Sound can be enabled or disabled from the main menu. No external sound files are required.
+- Use Windows Terminal or a UTF-8 enabled terminal for best emoji display.
+- Emoji glyph widths vary by terminal/font; if alignment looks unusual, use a
+  terminal with emoji support.
+- scores.txt is runtime data and is intentionally not included in the ZIP.
+- The ZIP contains only the eight named project files.

@@ -3,77 +3,74 @@
 #include <algorithm>
 #include <cstdlib>
 #include <iomanip>
+#include <sstream>
 
-void saveScore(const string& name, int score) {
-    ofstream file("scores.txt", ios::app);
+void saveScore(const string& name, const GameState& game) {
+    // Check the previous best score before appending the new local record.
+    int previousBest = 0;
+    ifstream previous("scores.txt");
+    string oldLine;
+    while (getline(previous, oldLine)) {
+        stringstream row(oldLine);
+        string oldName, scoreText;
+        if (getline(row, oldName, '|') && getline(row, scoreText, '|')) {
+            try { previousBest = max(previousBest, stoi(scoreText)); }
+            catch (...) { }
+        }
+    }
+    previous.close();
 
-    if (file.is_open()) {
-        file << name << "|" << score << '\n';
-        file.close();
+    // The same local file stores leaderboard entries and player statistics.
+    ofstream out("scores.txt", ios::app);
+    if (out) {
+        out << name << "|" << game.player.score << "|"
+            << game.player.coinsCollected << "|"
+            << game.player.ghostsEaten << "|"
+            << game.player.levelsCompleted << "\n";
+        out.close();
+        if (game.player.score > previousBest)
+            cout << "\n🏆 NEW ALL-TIME HIGH SCORE! Congratulations!\n";
     } else {
-        cout << "Unable to save score.\n";
+        cout << "Warning: scores.txt could not be written.\n";
     }
 }
 
 void showLeaderboard() {
     system("cls");
-
-    ifstream file("scores.txt");
-    vector<pair<string, int>> scores;
+    ifstream in("scores.txt");
+    vector<pair<string, int> > scores;
     string line;
 
-    while (getline(file, line)) {
-        size_t separator = line.find('|');
-
-        if (separator == string::npos) {
-            continue;
-        }
-
-        string name = line.substr(0, separator);
-        int score = 0;
-
-        try {
-            score = stoi(line.substr(separator + 1));
-        } catch (...) {
-            continue;
-        }
-
-        scores.push_back(make_pair(name, score));
+    while (getline(in, line)) {
+        stringstream ss(line);
+        string name, scoreText;
+        if (!getline(ss, name, '|') || !getline(ss, scoreText, '|')) continue;
+        try { scores.push_back(make_pair(name, stoi(scoreText))); }
+        catch (...) { continue; }
     }
-
-    file.close();
-
     sort(scores.begin(), scores.end(),
-        [](const pair<string, int>& first,
-           const pair<string, int>& second) {
-            return first.second > second.second;
+        [](const pair<string,int>& a, const pair<string,int>& b) {
+            return a.second > b.second;
         });
 
-    const string border = "+------+--------------------------+----------+";
-
-    cout << "\n" << border << '\n';
-    cout << "| " << left << setw(42) << "PAC-MAN LEADERBOARD" << " |\n";
-    cout << border << '\n';
-    cout << "| RANK | PLAYER                   | SCORE    |\n";
-    cout << border << '\n';
-
-    if (scores.empty()) {
-        cout << "| " << left << setw(42) << "No records available yet." << " |\n";
-    } else {
-        int limit = min(10, static_cast<int>(scores.size()));
-
-        for (int i = 0; i < limit; i++) {
-            string displayName = scores[i].first;
-            if (displayName.size() > 24) {
-                displayName = displayName.substr(0, 21) + "...";
-            }
-
-            cout << "| " << left << setw(4) << (i + 1)
-                 << " | " << left << setw(24) << displayName
-                 << " | " << right << setw(8) << scores[i].second
-                 << " |\n";
-        }
+    cout << "\n============== 🏆 TOP 10 LEADERBOARD ==============\n";
+    cout << left << setw(7) << "RANK" << setw(25) << "PLAYER" << "SCORE\n";
+    cout << "---------------------------------------------------\n";
+    if (scores.empty()) cout << "No records yet. Play a game first!\n";
+    for (size_t i = 0; i < scores.size() && i < 10; ++i) {
+        string name = scores[i].first.substr(0, 23);
+        cout << left << setw(7) << (i + 1) << setw(25) << name
+             << scores[i].second << "\n";
     }
+    cout << "===================================================\n\n";
+}
 
-    cout << border << "\n\n";
+void showStatistics(const string& name, const GameState& game) {
+    cout << "\n--------------- PLAYER STATISTICS ---------------\n";
+    cout << "Player: " << name << "\n";
+    cout << "Coins collected: " << game.player.coinsCollected << "\n";
+    cout << "Ghosts eaten: " << game.player.ghostsEaten << "\n";
+    cout << "Levels completed: " << game.player.levelsCompleted << "\n";
+    cout << "Score: " << game.player.score << "\n";
+    cout << "--------------------------------------------------\n";
 }
