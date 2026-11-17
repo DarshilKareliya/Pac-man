@@ -89,3 +89,4 @@ void updateGhosts(GameState& game) {
         }
     }
 }
+

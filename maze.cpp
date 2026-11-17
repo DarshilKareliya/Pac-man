@@ -155,3 +155,4 @@ void drawMaze(const GameState& game) {
 
     cout.flush();
 }
+
