@@ -2,6 +2,7 @@
 #include <fstream>
 #include <algorithm>
 #include <cstdlib>
+#include <iomanip>
 
 void saveScore(const string& name, int score) {
     ofstream file("scores.txt", ios::app);
@@ -48,22 +49,31 @@ void showLeaderboard() {
             return first.second > second.second;
         });
 
-    cout << "========== LEADERBOARD ==========\n\n";
+    const string border = "+------+--------------------------+----------+";
+
+    cout << "\n" << border << '\n';
+    cout << "| " << left << setw(42) << "PAC-MAN LEADERBOARD" << " |\n";
+    cout << border << '\n';
+    cout << "| RANK | PLAYER                   | SCORE    |\n";
+    cout << border << '\n';
 
     if (scores.empty()) {
-        cout << "No records available yet.\n";
+        cout << "| " << left << setw(42) << "No records available yet." << " |\n";
     } else {
-        cout << "Rank\tPlayer\t\tScore\n";
-        cout << "---------------------------------\n";
-
         int limit = min(10, static_cast<int>(scores.size()));
 
         for (int i = 0; i < limit; i++) {
-            cout << i + 1 << "\t"
-                 << scores[i].first << "\t\t"
-                 << scores[i].second << '\n';
+            string displayName = scores[i].first;
+            if (displayName.size() > 24) {
+                displayName = displayName.substr(0, 21) + "...";
+            }
+
+            cout << "| " << left << setw(4) << (i + 1)
+                 << " | " << left << setw(24) << displayName
+                 << " | " << right << setw(8) << scores[i].second
+                 << " |\n";
         }
     }
 
-    cout << '\n';
+    cout << border << "\n\n";
 }
