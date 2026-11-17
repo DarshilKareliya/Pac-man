@@ -3,90 +3,69 @@
 #include <ctime>
 #include <cmath>
 
-void updateGhosts(GameState& game) {
-    static bool randomSeeded = false;
-
-    if (!randomSeeded) {
-        srand(static_cast<unsigned int>(time(0)));
-        randomSeeded = true;
+static Position step(Position p, Direction d) {
+    switch (d) {
+        case Direction::UP: --p.row; break;
+        case Direction::DOWN: ++p.row; break;
+        case Direction::LEFT: --p.col; break;
+        case Direction::RIGHT: ++p.col; break;
+        default: break;
     }
+    return p;
+}
 
-    const Direction directions[] = {
-        Direction::UP,
-        Direction::DOWN,
-        Direction::LEFT,
-        Direction::RIGHT
-    };
+void updateGhosts(GameState& game) {
+    static bool seeded = false;
+    if (!seeded) { srand(static_cast<unsigned int>(time(0))); seeded = true; }
 
-    for (Ghost& ghost : game.ghosts) {
-        vector<Direction> possibleDirections;
+    const Direction dirs[] = {Direction::UP, Direction::DOWN,
+                              Direction::LEFT, Direction::RIGHT};
+    ++game.ghostTicks;
+    GhostMode mode = game.powerTicks > 0 ? GhostMode::FRIGHTENED :
+        ((game.ghostTicks % 28 < 8) ? GhostMode::SCATTER : GhostMode::CHASE);
 
-        // Find directions that are not blocked by walls.
-        for (Direction direction : directions) {
-            Position next = ghost.position;
+    for (size_t i = 0; i < game.ghosts.size(); ++i) {
+        Ghost& ghost = game.ghosts[i];
+        vector<Direction> possible;
+        for (Direction d : dirs) {
+            Position next = step(ghost.position, d);
+            if (!isWall(game.maze, next)) possible.push_back(d);
+        }
+        if (possible.empty()) continue;
 
-            switch (direction) {
-                case Direction::UP:    next.row--; break;
-                case Direction::DOWN:  next.row++; break;
-                case Direction::LEFT:  next.col--; break;
-                case Direction::RIGHT: next.col++; break;
-                default: break;
+        Direction chosen = possible[rand() % possible.size()];
+        int best = mode == GhostMode::FRIGHTENED ? -1 : 100000;
+
+        for (Direction d : possible) {
+            Position next = step(ghost.position, d);
+            Position target = game.player.position;
+
+            // Ghost personalities: direct chase, target slightly ahead,
+            // and more random patrol movement.
+            if (ghost.personality == 1) {
+                if (game.player.direction == Direction::UP) target.row -= 2;
+                if (game.player.direction == Direction::DOWN) target.row += 2;
+                if (game.player.direction == Direction::LEFT) target.col -= 2;
+                if (game.player.direction == Direction::RIGHT) target.col += 2;
             }
 
-            if (!isWall(game.maze, next)) {
-                possibleDirections.push_back(direction);
-            }
-        }
+            int distance = abs(next.row - target.row) + abs(next.col - target.col);
+            if (ghost.personality == 2 && mode == GhostMode::CHASE && rand() % 3 == 0)
+                distance = rand() % 30;
 
-        if (possibleDirections.empty()) {
-            continue;
-        }
-
-        // Most of the time, move towards the player.
-        if (rand() % 100 < 65) {
-            int bestDistance = 100000;
-            vector<Direction> bestDirections;
-
-            for (Direction direction : possibleDirections) {
-                Position next = ghost.position;
-
-                switch (direction) {
-                    case Direction::UP:    next.row--; break;
-                    case Direction::DOWN:  next.row++; break;
-                    case Direction::LEFT:  next.col--; break;
-                    case Direction::RIGHT: next.col++; break;
-                    default: break;
-                }
-
-                int distance =
-                    abs(next.row - game.player.position.row) +
-                    abs(next.col - game.player.position.col);
-
-                if (distance < bestDistance) {
-                    bestDistance = distance;
-                    bestDirections.clear();
-                    bestDirections.push_back(direction);
-                } else if (distance == bestDistance) {
-                    bestDirections.push_back(direction);
-                }
+            if (mode == GhostMode::SCATTER) {
+                distance = abs(next.row - ghost.home.row) + abs(next.col - ghost.home.col);
             }
 
-            ghost.direction =
-                bestDirections[rand() % bestDirections.size()];
-        } else {
-            // Sometimes choose a random valid direction.
-            ghost.direction =
-                possibleDirections[rand() % possibleDirections.size()];
+            if (mode == GhostMode::FRIGHTENED) distance = -distance;
+            if ((mode == GhostMode::FRIGHTENED && distance < best) ||
+                (mode != GhostMode::FRIGHTENED && distance < best)) {
+                best = distance;
+                chosen = d;
+            }
         }
-
-        // Move the ghost one cell.
-        switch (ghost.direction) {
-            case Direction::UP:    ghost.position.row--; break;
-            case Direction::DOWN:  ghost.position.row++; break;
-            case Direction::LEFT:  ghost.position.col--; break;
-            case Direction::RIGHT: ghost.position.col++; break;
-            default: break;
-        }
+        ghost.direction = chosen;
+        ghost.position = step(ghost.position, chosen);
     }
 }
 

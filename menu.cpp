@@ -1,83 +1,67 @@
 #include "game.h"
 #include <limits>
 #include <cstdlib>
+#ifdef _WIN32
 #include <windows.h>
+#endif
 
-// A short console animation shown after the player enters their name.
-// This changes only the presentation; it does not affect game state or timing.
-static void showLoadingAnimation(const string& playerName) {
-    const string frames[] = {
-        "[                    ]",
-        "[=====               ]",
-        "[==========          ]",
-        "[===============     ]",
-        "[====================]"
-    };
-
-    for (const string& frame : frames) {
-        system("cls");
-        cout << "+------------------------------------------+\n";
-        cout << "|              PAC-MAN ARCADE              |\n";
-        cout << "+------------------------------------------+\n\n";
-        cout << "  Welcome, " << playerName << "!\n\n";
-        cout << "          Preparing your game...\n\n";
-        cout << "                 " << frame << "\n\n";
-        cout.flush();
-        Sleep(180);
-    }
-    system("cls");
+static void waitBriefly() {
+#ifdef _WIN32
+    Sleep(160);
+#endif
 }
 
-MenuChoice showMenu(string& playerName) {
-    int choice;
-
+MenuChoice showMenu(string& playerName, bool& soundEnabled, int& difficulty) {
+    int choice = 0;
     while (true) {
         system("cls");
-
-        cout << "+==========================================+\n";
-        cout << "|               PAC-MAN ARCADE             |\n";
-        cout << "+==========================================+\n\n";
-        cout << "       .-----------------------------.\n";
-        cout << "       |  1.  Start Game             |\n";
-        cout << "       |  2.  Instructions           |\n";
-        cout << "       |  3.  Leaderboard            |\n";
-        cout << "       |  4.  Exit                   |\n";
-        cout << "       '-----------------------------'\n";
-        cout << "\n  Enter your choice: ";
+        cout << "============================================\n";
+        cout << "              PAC-MAN V3 \n";
+        cout << "============================================\n\n";
+        cout << "  1. Start Game\n";
+        cout << "  2. Instructions\n";
+        cout << "  3. Top 10 Leaderboard\n";
+        cout << "  4. Sound: " << (soundEnabled ? "ON" : "OFF") << " (toggle)\n";
+        cout << "  5. Difficulty: " << (difficulty == 1 ? "Easy" :
+            (difficulty == 2 ? "Medium" : "Hard")) << " (cycle)\n";
+        cout << "  6. Exit\n\n";
+        cout << "  Choose: ";
 
         if (!(cin >> choice)) {
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            cout << "\n  Please enter a number.\n";
+            cout << "Please enter a number.\n";
             system("pause");
             continue;
         }
-
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
         switch (choice) {
             case 1:
-                cout << "\n  Enter your name: ";
+                cout << "\nEnter player name: ";
                 getline(cin, playerName);
-
-                if (playerName.empty()) {
-                    playerName = "Player";
-                }
-
-                showLoadingAnimation(playerName);
+                if (playerName.empty()) playerName = "Player";
+                if (playerName.find('|') != string::npos) playerName = "Player";
+                system("cls");
+                cout << "Welcome, " << playerName << "!\n";
+                cout << "Get ready";
+                for (int i = 0; i < 3; ++i) { cout << "."; cout.flush(); waitBriefly(); }
                 return MenuChoice::START;
-
-            case 2:
-                return MenuChoice::INSTRUCTIONS;
-
-            case 3:
-                return MenuChoice::LEADERBOARD;
-
+            case 2: return MenuChoice::INSTRUCTIONS;
+            case 3: return MenuChoice::LEADERBOARD;
             case 4:
-                return MenuChoice::EXIT;
-
+                soundEnabled = !soundEnabled;
+                cout << "\nSound " << (soundEnabled ? "enabled" : "disabled") << ".\n";
+                system("pause");
+                break;
+            case 5:
+                difficulty = difficulty % 3 + 1;
+                cout << "\nDifficulty changed.\n";
+                system("pause");
+                break;
+            case 6: return MenuChoice::EXIT;
             default:
-                cout << "\n  Invalid choice. Please choose 1-4.\n";
+                cout << "\nInvalid choice. Select 1-6.\n";
                 system("pause");
         }
     }
@@ -85,18 +69,17 @@ MenuChoice showMenu(string& playerName) {
 
 void showInstructions() {
     system("cls");
-
-    cout << "+==========================================+\n";
-    cout << "|                HOW TO PLAY               |\n";
-    cout << "+==========================================+\n\n";
-    cout << "  1. Use W A S D or arrow keys to move.\n";
-    cout << "  2. Collect coins to earn 10 points each.\n";
-    cout << "  3. Avoid the ghosts.\n";
-    cout << "  4. You have three lives.\n";
-    cout << "  5. Collect all coins to win.\n";
-    cout << "  6. Press Q during the game to quit.\n\n";
-    cout << "+------------------------------------------+\n\n";
-
+    cout << "================ HOW TO PLAY ================\n\n";
+    cout << "W A S D / Arrow keys : Move\n";
+    cout << "P                    : Pause / resume\n";
+    cout << "Q                    : Quit current game\n\n";
+    cout << "🟡 Collect coins (+10 points).\n";
+    cout << "⚡ Power pellets (+50) let you eat ghosts temporarily.\n";
+    cout << "🍒 Bonus fruit gives extra points.\n";
+    cout << "👻 Avoid ghosts unless power mode is active.\n";
+    cout << "❤️ You start with 3 lives.\n";
+    cout << "Complete 3 levels to win.\n";
+    cout << "Difficulty and sound can be changed in the main menu.\n\n";
     system("pause");
 }
 

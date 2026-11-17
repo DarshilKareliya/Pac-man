@@ -1,12 +1,13 @@
-
 #include "game.h"
+#include <iomanip>
+#include <sstream>
+#include <cstdlib>
+#ifdef _WIN32
 #include <windows.h>
+#endif
 
-// Create the maze.
-// # = wall, . = coin, space = empty path.
-Maze createMaze() {
+Maze createMaze(int level) {
     Maze maze;
-
     maze.cells = {
         "#####################",
         "#.........#.........#",
@@ -25,134 +26,133 @@ Maze createMaze() {
         "#####################"
     };
 
+    // Place power pellets on open paths.
+    maze.cells[1][3] = 'o';
+    maze.cells[1][17] = 'o';
+    maze.cells[13][3] = 'o';
+    maze.cells[13][17] = 'o';
+
+    // Each level changes the wall layout by opening new passages.
+    // These shortcuts connect existing corridors and do not isolate spawns.
+    if (level >= 2) {
+        maze.cells[2][3] = '.';
+        maze.cells[2][17] = '.';
+        maze.cells[10][3] = '.';
+        maze.cells[10][17] = '.';
+        maze.cells[7][10] = 'o';
+    }
+    if (level >= 3) {
+        maze.cells[4][3] = '.';
+        maze.cells[4][17] = '.';
+        maze.cells[12][3] = '.';
+        maze.cells[12][17] = '.';
+        maze.cells[9][3] = 'o';
+        maze.cells[9][17] = 'o';
+    }
     return maze;
 }
 
-
-// Check whether a position is a wall.
-bool isWall(const Maze& maze, Position position) {
-    if (position.row < 0 ||
-        position.row >= static_cast<int>(maze.cells.size())) {
-        return true;
-    }
-
-    if (position.col < 0 ||
-        position.col >= static_cast<int>(maze.cells[position.row].size())) {
-        return true;
-    }
-
-    return maze.cells[position.row][position.col] == '#';
+bool isWall(const Maze& maze, Position p) {
+    if (p.row < 0 || p.row >= static_cast<int>(maze.cells.size())) return true;
+    if (p.col < 0 || p.col >= static_cast<int>(maze.cells[p.row].size())) return true;
+    return maze.cells[p.row][p.col] == '#';
 }
 
-
-// Count remaining coins.
 int countCoins(const Maze& maze) {
-    int count = 0;
-
-    for (const string& row : maze.cells) {
-        for (char cell : row) {
-            if (cell == '.') {
-                count++;
-            }
-        }
-    }
-
-    return count;
+    int total = 0;
+    for (const string& row : maze.cells)
+        for (char cell : row)
+            if (cell == '.' || cell == 'o') ++total;
+    return total;
 }
-
-
-// Check whether a neighbouring cell is a wall.
-bool hasWall(const vector<string>& cells, int row, int col) {
-    if (row < 0 || row >= static_cast<int>(cells.size())) {
-        return false;
-    }
-
-    if (col < 0 || col >= static_cast<int>(cells[row].size())) {
-        return false;
-    }
-
-    return cells[row][col] == '#';
-}
-
-
-// Draw connected wall characters.
-string wallCharacter(const vector<string>& cells, int row, int col) {
-    bool up    = hasWall(cells, row - 1, col);
-    bool down  = hasWall(cells, row + 1, col);
-    bool left  = hasWall(cells, row, col - 1);
-    bool right = hasWall(cells, row, col + 1);
-
-    if (up && down && left && right) return "┼";
-    if (up && down && left) return "┤";
-    if (up && down && right) return "├";
-    if (up && left && right) return "┴";
-    if (down && left && right) return "┬";
-    if (up && right) return "└";
-    if (up && left) return "┘";
-    if (down && right) return "┌";
-    if (down && left) return "┐";
-    if (left || right) return "─";
-    if (up || down) return "│";
-
-    return "┼";
-}
-
 
 void drawMaze(const GameState& game) {
-    SetConsoleOutputCP(CP_UTF8);
-
-    COORD cursorPosition = {0, 0};
-    SetConsoleCursorPosition(
-        GetStdHandle(STD_OUTPUT_HANDLE),
-        cursorPosition
-    );
-
     vector<string> screen = game.maze.cells;
+    if (game.fruitTicks > 0 && game.fruitRow >= 0 &&
+        game.fruitRow < static_cast<int>(screen.size()) &&
+        game.fruitCol >= 0 && game.fruitCol < static_cast<int>(screen[game.fruitRow].size()))
+        screen[game.fruitRow][game.fruitCol] = 'F';
 
-    for (const Ghost& ghost : game.ghosts) {
-        screen[ghost.position.row][ghost.position.col] = 'G';
-    }
+    for (const Ghost& ghost : game.ghosts)
+        if (ghost.position.row >= 0 && ghost.position.row < static_cast<int>(screen.size()) &&
+            ghost.position.col >= 0 && ghost.position.col < static_cast<int>(screen[ghost.position.row].size()))
+            screen[ghost.position.row][ghost.position.col] = 'G';
+    if (game.player.position.row >= 0 &&
+        game.player.position.row < static_cast<int>(screen.size()) &&
+        game.player.position.col >= 0 &&
+        game.player.position.col < static_cast<int>(screen[game.player.position.row].size()))
+        screen[game.player.position.row][game.player.position.col] = 'P';
 
-    screen[game.player.position.row][game.player.position.col] = 'C';
+    ostringstream scoreLine;
+    scoreLine << "Score: " << setw(6) << game.player.score
+              << "   Lives: " << game.player.lives
+              << "   Level: " << game.level
+              << "   Coins: " << countCoins(game.maze);
+    ostringstream statusLine;
+    statusLine << "Difficulty: " << (game.difficulty == 1 ? "Easy" :
+        (game.difficulty == 2 ? "Medium" : "Hard"))
+               << "   Sound: " << (game.soundEnabled ? "ON" : "OFF")
+               << "   Power: " << (game.powerTicks > 0 ? "ACTIVE" : "OFF");
 
-    int width = static_cast<int>(game.maze.cells[0].size());
+    vector<string> lines;
+    lines.push_back("+--------------------------------------------------+");
+    lines.push_back("|                    PAC-MAN V3                    |");
+    lines.push_back("+--------------------------------------------------+");
+    lines.push_back(scoreLine.str());
+    lines.push_back(statusLine.str());
+    lines.push_back("");
 
-    // Decorative ASCII frame around the existing maze.
-    cout << "   +" << string(width, '-') << "+\n";
-
-    for (int row = 0; row < static_cast<int>(screen.size()); row++) {
-        cout << "   |";
-        for (int col = 0; col < static_cast<int>(screen[row].size()); col++) {
-            char cell = screen[row][col];
-
-            if (cell == '#') {
-                cout << wallCharacter(game.maze.cells, row, col);
-            }
-            else if (cell == '.') {
-                cout << "\033[33m.\033[0m";
-            }
-            else if (cell == 'C') {
-                cout << "\033[93mC\033[0m";
-            }
-            else if (cell == 'G') {
-                cout << "\033[91mG\033[0m";
-            }
-            else {
-                cout << " ";
+    for (const string& row : screen) {
+        string renderedRow;
+        for (char cell : row) {
+            switch (cell) {
+                case '#': renderedRow += "🟦"; break;
+                case '.': renderedRow += "🟡"; break;
+                case 'o': renderedRow += "⚡"; break;
+                case 'P': renderedRow += "😮"; break;
+                case 'G': renderedRow += (game.powerTicks > 0 ? "😨" : "👻"); break;
+                case 'F': renderedRow += "🍒"; break;
+                default: renderedRow += "  "; break;
             }
         }
-
-        cout << "|\n";
+        lines.push_back(renderedRow);
     }
+    lines.push_back("");
+    lines.push_back("WASD / Arrow keys: Move | P: Pause | Q: Quit");
 
-    // Bottom border
-    cout << "   +" << string(width, '-') << "+\n";
-
-    cout << "\n  Score: " << game.player.score
-         << "    Lives: " << game.player.lives
-         << "    Coins left: " << countCoins(game.maze)
-         << "\n\n  Controls: W A S D / Arrow Keys | Q: Quit\n";
-
+    // Center each frame in the *visible* console window. The widest UI line
+    // is 52 columns; the 21-tile maze is rendered at about 42 columns.
+    const int contentWidth = 52;
+    const int contentHeight = static_cast<int>(lines.size());
+#ifdef _WIN32
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO info;
+    if (GetConsoleScreenBufferInfo(console, &info)) {
+        const int windowWidth = info.srWindow.Right - info.srWindow.Left + 1;
+        const int windowHeight = info.srWindow.Bottom - info.srWindow.Top + 1;
+        const int leftPadding = windowWidth > contentWidth ? (windowWidth - contentWidth) / 2 : 0;
+        const int topPadding = windowHeight > contentHeight ? (windowHeight - contentHeight) / 2 : 0;
+        for (size_t i = 0; i < lines.size(); ++i) {
+            const int lineWidth = (i >= 6 && i < 21) ? 42 : static_cast<int>(lines[i].size());
+            const int linePadding = leftPadding + (contentWidth - lineWidth) / 2;
+            COORD cursor;
+            cursor.X = static_cast<SHORT>(info.srWindow.Left + linePadding);
+            cursor.Y = static_cast<SHORT>(info.srWindow.Top + topPadding + static_cast<int>(i));
+            SetConsoleCursorPosition(console, cursor);
+            cout << lines[i] << string(static_cast<size_t>(contentWidth - lineWidth), ' ');
+        }
+        // Keep the cursor out of the visible game area to avoid blinking.
+        COORD cursor;
+        cursor.X = info.srWindow.Left;
+        cursor.Y = info.srWindow.Top;
+        SetConsoleCursorPosition(console, cursor);
+    } else {
+        for (const string& line : lines) cout << line << "\n";
+    }
+#else
+    cout << "\033[H";
+    for (const string& line : lines) cout << line << "\033[K\n";
+#endif
     cout.flush();
 }
 
